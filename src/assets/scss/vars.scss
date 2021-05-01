@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
+
+//Containers
+$x-small: 576px;
+$small: 768px;
+$medium: 992px;
+$large: 1200px;
+
+//Breakpoints
+$mobile: $x-small;
+$tablet: $small;
+$desktop: $medium;
+$large-desktop: $large;
+
+//Global Colors
+$background: #fafafa;
+$background-dark-mode: #181818;
+
+//Main Colors
+$primary-color: #05445E;
+$secondary-color: #75E6DA;
+$accent-color: #FFEEA8;
+
+//Ternary Colors
+$light-color: #ffffff;
+$dark-color: #000000;
+$success-color: #44a546;
+$danger-color: #B00020;
+$info-color: #1a7dcb;
+$warning-color: #d97e00;
+
+//Highlight Colors
+$link-color: $primary-color;
+$link-hover-color: darken($link-color, 15%);
+$highlight: #ffeea8;
+
+//Box Shadow
+$box-shadow:  0px 4px 8px rgba(0, 0, 0, 0.12);
+
+//font
+$font-family: 'Open Sans', sans-serif;
+$text-color: #2E2E2EFF;
+$text-color-dark-mode: #eaeaea;
+$font-size: md;
+
+$h1-mobile: 1.75rem;
+$h2-mobile: 1.5rem;
+$h3-mobile: 1.25rem;
+$h4-mobile: 1.1rem;
+$h5-mobile: 1rem;
+
+$h1: 2.25rem;
+$h2: 2rem;
+$h3: 1.75rem;
+$h4: 1.5rem;
+$h5: 1.25rem;
+
+//sizes
+$xs: 0.6rem;
+$sm: 0.8rem;
+$md: 1rem;
+$lg: 1.25rem;
+$xl: 1.5rem;
+
+
+
