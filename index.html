@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nischal's Terminal v1.0.0</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #00ff88;
+    --green-dim: #00cc6a;
+    --green-dark: #007a40;
+    --amber: #ffb700;
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #181818;
+    --border: #1e1e1e;
+    --text: #c8ffdd;
+    --muted: #4a7a5e;
+    --white: #e8ffe8;
+  }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    background: #0e0e0e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    overflow: hidden;
+  }
+
+  /* ── MONITOR FRAME ── */
+  .monitor-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* Explicitly lock sizing properties so it cannot morph dynamically */
+    width: 90vw;
+    max-width: 960px;
+    flex-shrink: 0;
+  }
+
+  .monitor-bezel {
+    width: 100%;
+    background: #1c1c1c;
+    border-radius: 14px 14px 8px 8px;
+    padding: 18px 18px 22px;
+    border: 2px solid #2e2e2e;
+    box-shadow:
+      0 0 0 1px #0a0a0a,
+      0 40px 100px rgba(0,0,0,0.95),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  /* webcam dot */
+  .monitor-bezel::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #252525;
+    border: 1px solid #333;
+  }
+
+  .monitor-neck {
+    width: 70px; height: 26px;
+    background: linear-gradient(to bottom, #1e1e1e, #161616);
+    clip-path: polygon(18% 0%, 82% 0%, 96% 100%, 4% 100%);
+    flex-shrink: 0;
+  }
+
+  .monitor-base {
+    width: 200px; height: 12px;
+    background: #1c1c1c;
+    border-radius: 0 0 50px 50px;
+    border: 2px solid #2e2e2e;
+    border-top: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+    flex-shrink: 0;
+  }
+
+  /* ── TERMINAL WINDOW ── */
+  .window {
+    width: 100%;
+    height: 60vh;
+    min-height: 480px;
+    max-height: 640px;
+    background: var(--bg);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* subtle scanlines inside screen */
+  .window::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent, transparent 2px,
+      rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px
+    );
+    pointer-events: none;
+    z-index: 5;
+    border-radius: 8px;
+  }
+
+  .titlebar {
+    background: #141414;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 8px 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .title-text {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.4px;
+  }
+
+  /* ── SCROLL AREA ── */
+  .terminal-body {
+    flex: 1;
+    width: 100%;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 0.5rem;
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .terminal-body::-webkit-scrollbar { width: 3px; }
+  .terminal-body::-webkit-scrollbar-thumb { background: var(--green-dark); border-radius: 2px; }
+
+  /* ── OUTPUT ── */
+  .output {
+    width: 100%;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .line { display: block; width: 100%; white-space: pre-wrap; word-break: break-word; }
+  .green  { color: var(--green); }
+  .amber  { color: var(--amber); }
+  .muted  { color: var(--muted); }
+  .white  { color: var(--white); }
+  .bold   { font-weight: 700; }
+  .divider { color: #1e4a30; }
+
+  /* ── PROMPT LINES ── */
+  .prompt-line {
+    display: flex;
+    align-items: baseline;
+    margin-top: 6px;
+    width: 100%;
+  }
+  .prompt-prefix { color: var(--green); font-weight: 700; white-space: nowrap; font-size: 13px; }
+  .cmd-text { color: var(--white); margin-left: 6px; font-size: 13px; }
+
+  /* ── LIVE INPUT ROW ── */
+  .input-row {
+    display: flex;
+    align-items: baseline;
+    padding: 4px 0 1.25rem;
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  .input-ps1 {
+    color: var(--green);
+    font-weight: 700;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  #cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--white);
+    font-family: inherit;
+    font-size: 13px;
+    caret-color: var(--green);
+    margin-left: 6px;
+    padding: 0;
+    line-height: 1.75;
+  }
+
+  #cmd-input:focus { caret-color: var(--green); }
+
+  /* ── COMPONENTS ── */
+  .ascii-art {
+    color: var(--green);
+    font-size: 9.5px;
+    line-height: 1.2;
+    white-space: pre;
+    font-weight: 700;
+  }
+
+  .neofetch {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin: 0.5rem 0;
+    width: 100%;
+  }
+  .neofetch-right { flex: 1; min-width: 240px; }
+
+  .info-row { display: flex; margin: 2px 0; }
+  .info-key { color: var(--green); font-weight: 700; min-width: 110px; }
+  .info-val { color: var(--white); }
+  .info-val a { color: var(--green-dim); text-decoration: underline; }
+
+  .summary-box {
+    border-left: 3px solid var(--green-dark);
+    padding: 8px 14px;
+    margin: 10px 0 4px;
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.8;
+    font-style: italic;
+  }
+
+  .box { border: 1px solid var(--green-dark); border-radius: 4px; overflow: hidden; margin: 6px 0; width: 100%; }
+  .box-header { background: var(--green-dark); color: #000; font-weight: 700; padding: 4px 12px; font-size: 11px; letter-spacing: 1px; }
+  .box-row { display: flex; gap: 12px; padding: 5px 12px; border-bottom: 1px solid #161616; align-items: baseline; }
+  .box-row:last-child { border-bottom: none; }
+  .box-icon { color: var(--amber); width: 18px; flex-shrink: 0; }
+  .box-label { color: var(--muted); min-width: 68px; font-size: 12px; }
+  .box-val { color: var(--white); font-size: 12px; }
+  .box-val a { color: var(--green-dim); text-decoration: underline; }
+
+  .project-card { border: 1px solid var(--green-dark); border-radius: 4px; margin: 7px 0; padding: 9px 13px; width: 100%; }
+  .project-title { color: var(--green); font-weight: 700; font-size: 12.5px; }
+  .project-desc { color: var(--muted); font-size: 11.5px; margin: 3px 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .tag { background: var(--bg3); border: 1px solid var(--green-dark); color: var(--green-dim); font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+
+  .skills-row { display: flex; margin: 3px 0; width: 100%; }
+  .skills-cat { color: var(--green); font-weight: 700; min-width: 136px; font-size: 12.5px; }
+  .skills-val { color: var(--white); font-size: 12.5px; }
+
+  .edu-box { border: 1px solid var(--green-dark); border-radius: 4px; margin: 6px 0; padding: 10px 14px; width: 100%; }
+  .edu-deg { color: var(--green); font-weight: 700; font-size: 13px; }
+  .edu-inst { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    html, body { display: block; background: var(--bg); overflow: auto; }
+    .monitor-wrap { display: block; padding: 0; max-width: 100%; width: 100%; }
+    .monitor-bezel { border-radius: 0; border: none; padding: 0; background: transparent; box-shadow: none; width: 100%; }
+    .monitor-bezel::before { display: none; }
+    .monitor-neck, .monitor-base { display: none; }
+    .window { height: 100dvh; max-height: none; min-height: 0; border-radius: 0; }
+    .titlebar { display: none; }
+    .neofetch { flex-direction: column; gap: 0.75rem; }
+    .ascii-art { font-size: 6.5px; }
+    .terminal-body { padding: 0.9rem 1rem 0.25rem; }
+    .input-row { padding: 2px 0 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="monitor-wrap">
+  <div class="monitor-bezel">
+    <div class="window" id="window">
+      <div class="titlebar">
+        <span class="title-text">nischal@portfolio — bash — 120×40</span>
+      </div>
+      <div class="terminal-body" id="terminal">
+        <div class="output" id="output"></div>
+        <div class="input-row" id="input-row">
+          <span class="input-ps1">nischal@portfolio:~$</span>
+          <input type="text" id="cmd-input"
+            autocomplete="off" autocorrect="off"
+            autocapitalize="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="monitor-neck"></div>
+  <div class="monitor-base"></div>
+</div>
+
+<script>
+const output   = document.getElementById('output');
+const input    = document.getElementById('cmd-input');
+const terminal = document.getElementById('terminal');
+
+function scrollBottom() {
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function appendLine(html, cls) {
+  const d = document.createElement('div');
+  d.className = 'line ' + (cls || '');
+  d.innerHTML = html;
+  output.appendChild(d);
+  scrollBottom();
+  return d;
+}
+
+function appendRaw(node) {
+  output.appendChild(node);
+  scrollBottom();
+}
+
+const ASCII_NISCHAL = ` ███╗   ██╗██╗███████╗ ██████╗██╗  ██╗ █████╗ ██╗     
+ ████╗  ██║██║██╔════╝██╔════╝██║  ██║██╔══██╗██║     
+ ██╔██╗ ██║██║███████╗██║     ███████║███████║██║     
+ ██║╚██╗██║██║╚════██║██║     ██╔══██║██╔══██║██║     
+ ██║ ╚████║██║███████║╚██████╗██║  ██║██║  ██║███████╗
+ ╚═╝  ╚═══╝╚═╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝`;
+
+const COMMANDS = {
+  help() {
+    appendLine('');
+    appendLine('<span class="green bold">Available commands</span>');
+    appendLine('<span class="divider">─────────────────────────────</span>');
+    [
+      ['about','Who am I?'],
+      ['contact','Get in touch'],
+      ['projects','Things I\'ve built'],
+      ['skills','My tech stack'],
+      ['education','My academic background'],
+      ['help','List all commands'],
+      ['clear','Clear the terminal'],
+    ].forEach(([c,d]) => {
+      appendLine(`  <span class="green">${c.padEnd(12)}</span><span class="muted">→</span>  <span class="white">${d}</span>`);
+    });
+    appendLine('');
+  },
+
+  about() {
+    appendLine('');
+    const nf = document.createElement('div');
+    nf.className = 'neofetch';
+
+    const left = document.createElement('div');
+    left.innerHTML = `<pre class="ascii-art">${ASCII_NISCHAL}</pre>`;
+
+    const right = document.createElement('div');
+    right.className = 'neofetch-right';
+    right.innerHTML = `
+      <div class="info-row"><span class="green bold">nischal@portfolio</span></div>
+      <div class="info-row"><span class="divider">─────────────────</span></div>
+      <div class="info-row"><span class="info-key">Name      </span><span class="muted">:</span>&nbsp;<span class="info-val">Nischal Babu Bohara</span></div>
+      <div class="info-row"><span class="info-key">Role      </span><span class="muted">:</span>&nbsp;<span class="info-val">Software Developer</span></div>
+      <div class="info-row"><span class="info-key">Email     </span><span class="muted">:</span>&nbsp;<span class="info-val"><a href="mailto:nischalbabubohara@gmail.com">nischalbabubohara@gmail.com</a></span></div>
+      <div class="info-row"><span class="info-key">GitHub    </span><span class="muted">:</span>&nbsp;<span class="info-val"><a href="https://github.com/Nischal47" target="_blank">github.com/Nischal47</a></span></div>
+      <div class="info-row"><span class="info-key">Education </span><span class="muted">:</span>&nbsp;<span class="info-val">BSc. CSIT | MBA Lincoln College</span></div>
+      <div class="info-row"><span class="info-key">OS        </span><span class="muted">:</span>&nbsp;<span class="info-val">Human Brain v25.0</span></div>
+      <div class="info-row"><span class="info-key">Shell     </span><span class="muted">:</span>&nbsp;<span class="info-val amber">Coffee + Code</span></div>
+    `;
+
+    nf.appendChild(left);
+    nf.appendChild(right);
+    appendRaw(nf);
+
+    const s = document.createElement('div');
+    s.className = 'summary-box';
+    s.textContent = 'I like to build software that solves real-world problems. Specializing in frontend development with strong backend knowledge, I just love to work with new technologies and use them to deliver concrete solutions.';
+    appendRaw(s);
+    appendLine('');
+  },
+
+  contact() {
+    appendLine('');
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.innerHTML = `
+      <div class="box-header">◈  CONTACT NISCHAL</div>
+      <div class="box-row"><span class="box-icon">✉</span><span class="box-label">Email</span><span class="box-val"><a href="mailto:nischalbabubohara@gmail.com">nischalbabubohara@gmail.com</a></span></div>
+      <div class="box-row"><span class="box-icon">⌥</span><span class="box-label">GitHub</span><span class="box-val"><a href="https://github.com/nischalbabubohara" target="_blank">github.com/nischalbabubohara</a></span></div>
+      <div class="box-row"><span class="box-icon">◎</span><span class="box-label">Status</span><span class="box-val amber">Open to opportunities</span></div>
+    `;
+    appendRaw(box);
+    appendLine('');
+  },
+
+  projects() {
+    appendLine('');
+    appendLine('<span class="green bold">◈ Projects</span>');
+    appendLine('');
+    [
+      { n:'Gurukul Hub',       d:'An educational platform connecting students and instructors', s:['JavaScript','React','GraphQL','Hasura','PostgreSQL'] },
+      { n:'RestroByte',        d:'Restaurant management Android application',                  s:['Kotlin','Couchbase DB','Spring Boot','Java'] },
+      { n:'RightFind',         d:'A smart search and matching platform',                       s:['React','TypeScript','Spring Boot','Java','PostgreSQL'] },
+      { n:'Vacancy Generator', d:'Automated job vacancy posting tool',                         s:['React','TypeScript','PHP Laravel','PostgreSQL'] },
+      { n:'Heffiq CPQ',        d:'Configure Price Quote enterprise system',                    s:['React','TypeScript','PHP Laravel','PostgreSQL'] },
+    ].forEach((p,i) => {
+      const c = document.createElement('div');
+      c.className = 'project-card';
+      c.innerHTML = `<div class="project-title">[${String(i+1).padStart(2,'0')}] ${p.n}</div>
+        <div class="project-desc">${p.d}</div>
+        <div class="tags">${p.s.map(t=>`<span class="tag">${t}</span>`).join('')}</div>`;
+      appendRaw(c);
+    });
+    appendLine('');
+  },
+
+  skills() {
+    appendLine('');
+    appendLine('<span class="green bold">◈ Tech Stack</span>');
+    appendLine('<span class="divider">──────────────────────────────────────────────</span>');
+    [
+      ['LANGUAGES ','JavaScript, TypeScript, Kotlin, Java, PHP, SQL'],
+      ['FRONTEND  ','React, GraphQL'],
+      ['BACKEND   ','Spring Boot, Laravel, Hasura'],
+      ['DATABASES ','PostgreSQL, Couchbase'],
+      ['MOBILE    ','Android (Kotlin)'],
+      ['TOOLS     ','Git, REST APIs'],
+    ].forEach(([k,v]) => {
+      const r = document.createElement('div');
+      r.className = 'skills-row';
+      r.innerHTML = `<span class="skills-cat">${k}</span><span class="muted">:&nbsp;</span><span class="skills-val">${v}</span>`;
+      appendRaw(r);
+    });
+    appendLine('');
+  },
+
+  education() {
+    appendLine('');
+    appendLine('<span class="green bold">◈ Education</span>');
+    appendLine('');
+    [
+      { icon:'🎓', deg:'BSc. CSIT', inst:'Tribhuvan University',    year:'2020' },
+      { icon:'🎓', deg:'MBA',       inst:'Lincoln College University', year:'2026' },
+    ].forEach(item => {
+      const c = document.createElement('div');
+      c.className = 'edu-box';
+      c.innerHTML = `<div class="edu-deg">${item.icon} ${item.deg}</div>
+        <div class="edu-inst">${item.inst}&nbsp;<span class="amber">| ${item.year}</span></div>`;
+      appendRaw(c);
+    });
+    appendLine('');
+  },
+
+  clear() { output.innerHTML = ''; }
+};
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addPromptLine(cmd) {
+  const d = document.createElement('div');
+  d.className = 'prompt-line';
+  d.innerHTML = `<span class="prompt-prefix">nischal@portfolio:~$</span><span class="cmd-text">${escHtml(cmd)}</span>`;
+  appendRaw(d);
+}
+
+function runCommand(raw) {
+  const cmd = raw.trim();
+  addPromptLine(' ' + cmd);
+  if (!cmd) return;
+  const fn = COMMANDS[cmd.toLowerCase()];
+  if (fn) {
+    fn();
+  } else {
+    appendLine(`<span class="amber">command not found:</span> <span class="white">${escHtml(cmd)}</span><span class="muted">  ·  type </span><span class="green">help</span>`);
+    appendLine('');
+  }
+}
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const val = input.value;
+    input.value = '';
+    runCommand(val);
+  }
+});
+
+document.addEventListener('click', () => input.focus());
+input.focus();
+
+const bootLines = [
+  '<span class="green bold">Welcome to Nischal\'s Terminal v1.0.0</span>',
+  '<span class="divider">═════════════════════════════════════════</span>',
+  '<span class="muted">Type \'help\' to see available commands.</span>',
+  '',
+  '<span class="muted">Available commands:</span>',
+  '  <span class="green">about     </span> <span class="muted">→</span>  Who am I?',
+  '  <span class="green">contact   </span> <span class="muted">→</span>  Get in touch',
+  '  <span class="green">projects  </span> <span class="muted">→</span>  Things I\'ve built',
+  '  <span class="green">skills    </span> <span class="muted">→</span>  My tech stack',
+  '  <span class="green">education </span> <span class="muted">→</span>  My academic background',
+  '  <span class="green">help      </span> <span class="muted">→</span>  List all commands',
+  '  <span class="green">clear     </span> <span class="muted">→</span>  Clear the terminal',
+  '',
+];
+
+bootLines.forEach(t => appendLine(t));
+addPromptLine(' about');
+COMMANDS.about();
+input.focus();
+</script>
+</body>
+</html>
